@@ -342,6 +342,7 @@ void SystemClock_Config(void) {
 static void MX_RTC_Init(void) {
 
 	/* USER CODE BEGIN RTC_Init 0 */
+	HAL_PWR_EnableBkUpAccess();
 
 	/* USER CODE END RTC_Init 0 */
 
@@ -362,26 +363,53 @@ static void MX_RTC_Init(void) {
 	}
 
 	/* USER CODE BEGIN Check_RTC_BKUP */
+	if (HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR1) != RTC_BKUP_DEFINE_CODE) {
+		// Clear Backup register : recover to current RTC information
 
+		// Set to Time/Date from current Time/Date
+		sTime.Hours = 0x0;
+		sTime.Minutes = 0x0;
+		sTime.Seconds = 0x0;
+
+		if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
+			Error_Handler();
+		}
+		DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+		DateToUpdate.Month = RTC_MONTH_JANUARY;
+		DateToUpdate.Date = 0x1;
+		DateToUpdate.Year = 0x0;
+
+		if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK) {
+			Error_Handler();
+		}
+
+		// Write a data in ad RTC Backup data register
+		HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, RTC_BKUP_DEFINE_CODE);
+	} else {
+		// Only read time and date
+		HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
+		HAL_RTC_GetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD);
+
+	}
 	/* USER CODE END Check_RTC_BKUP */
 
 	/** Initialize RTC and set the Time and Date
 	 */
-	sTime.Hours = 0x0;
-	sTime.Minutes = 0x0;
-	sTime.Seconds = 0x0;
-
-	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
-		Error_Handler();
-	}
-	DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
-	DateToUpdate.Month = RTC_MONTH_JANUARY;
-	DateToUpdate.Date = 0x1;
-	DateToUpdate.Year = 0x0;
-
-	if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK) {
-		Error_Handler();
-	}
+//	sTime.Hours = 0x0;
+//	sTime.Minutes = 0x0;
+//	sTime.Seconds = 0x0;
+//
+//	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
+//		Error_Handler();
+//	}
+//	DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+//	DateToUpdate.Month = RTC_MONTH_JANUARY;
+//	DateToUpdate.Date = 0x1;
+//	DateToUpdate.Year = 0x0;
+//
+//	if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK) {
+//		Error_Handler();
+//	}
 	/* USER CODE BEGIN RTC_Init 2 */
 
 	/* USER CODE END RTC_Init 2 */

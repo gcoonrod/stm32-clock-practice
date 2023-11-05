@@ -101,6 +101,7 @@ void check_buttons(SystemState *state);
 #define LED_SEG_GPIO_Port GPIOA
 #define LED_DIG_GPIO_Port GPIOB
 #define BTN_GPIO_Port GPIOB
+#define RTC_BKUP_DEFINE_CODE 0x32F2
 
 /* USER CODE END Private defines */
 
