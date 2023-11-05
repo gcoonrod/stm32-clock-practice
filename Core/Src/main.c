@@ -59,12 +59,8 @@ static void MX_RTC_Init(void);
 /* USER CODE BEGIN 0 */
 uint32_t counter = 0;
 RTC_TimeTypeDef current_time;
-SystemState sys_state = {
-		.digits = {0},
-		.dps = {0},
-		.btn_set = 0,
-		.btn_adj = 0
-};
+SystemState sys_state = { .digits = { 0 }, .dps = { 0 }, .btn_set = 0,
+		.btn_adj = 0 };
 
 static const uint8_t segmentNumber[10] = { 0x3f, // 0
 		0x06, // 1
@@ -116,37 +112,38 @@ void display_digit(uint8_t digit, uint8_t num) {
 void display_digit_dp(uint8_t digit, uint8_t num, uint8_t dp) {
 	// Turn off all segments
 	HAL_GPIO_WritePin(LED_SEG_GPIO_Port,
-				LED_SEG_A_Pin | LED_SEG_B_Pin | LED_SEG_C_Pin | LED_SEG_D_Pin
-						| LED_SEG_E_Pin | LED_SEG_F_Pin | LED_SEG_G_Pin
-						| LED_SEG_DP_Pin, GPIO_PIN_RESET);
+			LED_SEG_A_Pin | LED_SEG_B_Pin | LED_SEG_C_Pin | LED_SEG_D_Pin
+					| LED_SEG_E_Pin | LED_SEG_F_Pin | LED_SEG_G_Pin
+					| LED_SEG_DP_Pin, GPIO_PIN_RESET);
 
 	// Turn off all digits
 	HAL_GPIO_WritePin(LED_DIG_GPIO_Port,
-				LED_DIG_1_Pin | LED_DIG_2_Pin | LED_DIG_3_Pin | LED_DIG_4_Pin
-						| LED_DIG_5_Pin | LED_DIG_6_Pin, GPIO_PIN_SET);
+			LED_DIG_1_Pin | LED_DIG_2_Pin | LED_DIG_3_Pin | LED_DIG_4_Pin
+					| LED_DIG_5_Pin | LED_DIG_6_Pin, GPIO_PIN_SET);
 
 	uint8_t segments = (num < 10) ? segmentNumber[num] : 0;
-	if (dp) segments |= (1 << 7);
+	if (dp)
+		segments |= (1 << 7);
 
 	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_A_Pin,
-				((segments >> 0) & 0x01));
-		HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_B_Pin,
-				((segments >> 1) & 0x01));
-		HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_C_Pin,
-				((segments >> 2) & 0x01));
-		HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_D_Pin,
-				((segments >> 3) & 0x01));
-		HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_E_Pin,
-				((segments >> 4) & 0x01));
-		HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_F_Pin,
-				((segments >> 5) & 0x01));
-		HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_G_Pin,
-				((segments >> 6) & 0x01));
-		HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_DP_Pin,
-				((segments >> 7) & 0x01));
+			((segments >> 0) & 0x01));
+	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_B_Pin,
+			((segments >> 1) & 0x01));
+	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_C_Pin,
+			((segments >> 2) & 0x01));
+	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_D_Pin,
+			((segments >> 3) & 0x01));
+	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_E_Pin,
+			((segments >> 4) & 0x01));
+	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_F_Pin,
+			((segments >> 5) & 0x01));
+	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_G_Pin,
+			((segments >> 6) & 0x01));
+	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_DP_Pin,
+			((segments >> 7) & 0x01));
 
-		// Finally, turn on the desired digit
-		HAL_GPIO_WritePin(LED_DIG_GPIO_Port, 1 << (digit + 10), GPIO_PIN_RESET);
+	// Finally, turn on the desired digit
+	HAL_GPIO_WritePin(LED_DIG_GPIO_Port, 1 << (digit + 10), GPIO_PIN_RESET);
 }
 
 void clear_display() {
@@ -195,13 +192,17 @@ void update_time(RTC_TimeTypeDef *time, SystemState *state) {
 
 }
 
-void check_buttons(SystemState* state) {
+void check_buttons(SystemState *state) {
 	state->btn_set = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin);
 	state->btn_adj = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_Pin);
 
 	// TEMP
-	state->dps[0] = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin) == GPIO_PIN_SET ? 0 : 1;
-	state->dps[1] = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_Pin) == GPIO_PIN_SET ? 0 : 1;
+	state->dps[0] =
+			HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin) == GPIO_PIN_SET ?
+					0 : 1;
+	state->dps[1] =
+			HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_Pin) == GPIO_PIN_SET ?
+					0 : 1;
 }
 
 /* USER CODE END 0 */
@@ -233,6 +234,9 @@ int main(void) {
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
+	MX_RTC_Init();
+	MX_USB_DEVICE_Init();
+	/* USER CODE BEGIN 2 */
 
 	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_A_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_B_Pin, GPIO_PIN_RESET);
@@ -247,9 +251,6 @@ int main(void) {
 			LED_DIG_1_Pin | LED_DIG_2_Pin | LED_DIG_3_Pin | LED_DIG_4_Pin
 					| LED_DIG_5_Pin | LED_DIG_6_Pin, GPIO_PIN_SET);
 
-	MX_RTC_Init();
-	MX_USB_DEVICE_Init();
-	/* USER CODE BEGIN 2 */
 	sys_state.dps[0] = 0;
 	sys_state.dps[1] = 1;
 	sys_state.dps[2] = 0;
@@ -269,7 +270,6 @@ int main(void) {
 		// 2. Update the time
 		HAL_RTC_GetTime(&hrtc, &current_time, RTC_FORMAT_BCD);
 		update_time(&current_time, &sys_state);
-
 
 		// 3. Redraw the display
 		for (uint8_t d = 0; d < 6; d++) {
@@ -374,10 +374,10 @@ static void MX_RTC_Init(void) {
 	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
 		Error_Handler();
 	}
-	DateToUpdate.WeekDay = RTC_WEEKDAY_SATURDAY;
-	DateToUpdate.Month = RTC_MONTH_NOVEMBER;
-	DateToUpdate.Date = 0x4;
-	DateToUpdate.Year = 0x23;
+	DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+	DateToUpdate.Month = RTC_MONTH_JANUARY;
+	DateToUpdate.Date = 0x1;
+	DateToUpdate.Year = 0x0;
 
 	if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK) {
 		Error_Handler();
@@ -425,6 +425,12 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+	/*Configure GPIO pins : BTN_SET_Pin BTN_ADJ_Pin */
+	GPIO_InitStruct.Pin = BTN_SET_Pin | BTN_ADJ_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 	/*Configure GPIO pins : LED_DIG_1_Pin LED_DIG_2_Pin LED_DIG_3_Pin LED_DIG_4_Pin
 	 LED_DIG_5_Pin LED_DIG_6_Pin */
 	GPIO_InitStruct.Pin = LED_DIG_1_Pin | LED_DIG_2_Pin | LED_DIG_3_Pin
@@ -436,12 +442,6 @@ static void MX_GPIO_Init(void) {
 
 	/* USER CODE BEGIN MX_GPIO_Init_2 */
 
-	HAL_GPIO_WritePin(BTN_GPIO_Port, BTN_SET_Pin | BTN_ADJ_Pin, GPIO_PIN_RESET);
-	GPIO_InitStruct.Pin = BTN_SET_Pin | BTN_ADJ_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
 	/* USER CODE END MX_GPIO_Init_2 */
 }
 

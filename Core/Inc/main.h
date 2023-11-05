@@ -57,9 +57,9 @@ typedef struct {
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
-void check_buttons(SystemState* state);
 
 /* USER CODE BEGIN EFP */
+void check_buttons(SystemState *state);
 
 /* USER CODE END EFP */
 
@@ -80,6 +80,10 @@ void check_buttons(SystemState* state);
 #define LED_SEG_G_GPIO_Port GPIOA
 #define LED_SEG_DP_Pin GPIO_PIN_7
 #define LED_SEG_DP_GPIO_Port GPIOA
+#define BTN_SET_Pin GPIO_PIN_0
+#define BTN_SET_GPIO_Port GPIOB
+#define BTN_ADJ_Pin GPIO_PIN_1
+#define BTN_ADJ_GPIO_Port GPIOB
 #define LED_DIG_1_Pin GPIO_PIN_10
 #define LED_DIG_1_GPIO_Port GPIOB
 #define LED_DIG_2_Pin GPIO_PIN_11
@@ -96,10 +100,7 @@ void check_buttons(SystemState* state);
 /* USER CODE BEGIN Private defines */
 #define LED_SEG_GPIO_Port GPIOA
 #define LED_DIG_GPIO_Port GPIOB
-
 #define BTN_GPIO_Port GPIOB
-#define BTN_SET_Pin GPIO_PIN_0
-#define BTN_ADJ_Pin GPIO_PIN_1
 
 /* USER CODE END Private defines */
 
