@@ -41,6 +41,12 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+typedef struct {
+	uint8_t digits[6];
+	uint8_t dps[6];
+	uint8_t btn_set;
+	uint8_t btn_adj;
+} SystemState;
 
 /* USER CODE END EC */
 
@@ -51,6 +57,7 @@ extern "C" {
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
+void check_buttons(SystemState* state);
 
 /* USER CODE BEGIN EFP */
 
@@ -89,6 +96,10 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 #define LED_SEG_GPIO_Port GPIOA
 #define LED_DIG_GPIO_Port GPIOB
+
+#define BTN_GPIO_Port GPIOC
+#define BTN_SET_Pin GPIO_PIN_13
+#define BTN_ADJ_Pin GPIO_PIN_14
 
 /* USER CODE END Private defines */
 
