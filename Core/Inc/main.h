@@ -97,9 +97,9 @@ void check_buttons(SystemState* state);
 #define LED_SEG_GPIO_Port GPIOA
 #define LED_DIG_GPIO_Port GPIOB
 
-#define BTN_GPIO_Port GPIOC
-#define BTN_SET_Pin GPIO_PIN_13
-#define BTN_ADJ_Pin GPIO_PIN_14
+#define BTN_GPIO_Port GPIOB
+#define BTN_SET_Pin GPIO_PIN_0
+#define BTN_ADJ_Pin GPIO_PIN_1
 
 /* USER CODE END Private defines */
 

@@ -198,6 +198,10 @@ void update_time(RTC_TimeTypeDef *time, SystemState *state) {
 void check_buttons(SystemState* state) {
 	state->btn_set = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin);
 	state->btn_adj = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_Pin);
+
+	// TEMP
+	state->dps[0] = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin) == GPIO_PIN_SET ? 0 : 1;
+	state->dps[1] = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_Pin) == GPIO_PIN_SET ? 0 : 1;
 }
 
 /* USER CODE END 0 */
@@ -435,7 +439,7 @@ static void MX_GPIO_Init(void) {
 	HAL_GPIO_WritePin(BTN_GPIO_Port, BTN_SET_Pin | BTN_ADJ_Pin, GPIO_PIN_RESET);
 	GPIO_InitStruct.Pin = BTN_SET_Pin | BTN_ADJ_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
 	/* USER CODE END MX_GPIO_Init_2 */
