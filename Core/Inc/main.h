@@ -36,17 +36,33 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+typedef enum {
+	NORMAL,
+	SET_HOURS,
+	SET_MINUTES,
+	SET_SECONDS
+} SystemMode;
+
+typedef struct {
+	uint8_t digits[6];
+	uint8_t dps[6];
+} SystemState;
+
+typedef struct {
+	uint16_t pin;
+	GPIO_TypeDef *port;
+	uint8_t pressed;
+	uint8_t counter;
+	uint8_t processed;
+} Button;
 
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-typedef struct {
-	uint8_t digits[6];
-	uint8_t dps[6];
-	uint8_t btn_set;
-	uint8_t btn_adj;
-} SystemState;
+
+#define DEBOUNCE_THRESHOLD 10
+#define DEBOUNCE_RESET 0
 
 /* USER CODE END EC */
 
@@ -59,7 +75,7 @@ typedef struct {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void check_buttons(SystemState *state);
+void check_buttons();
 
 /* USER CODE END EFP */
 
@@ -82,8 +98,10 @@ void check_buttons(SystemState *state);
 #define LED_SEG_DP_GPIO_Port GPIOA
 #define BTN_SET_Pin GPIO_PIN_0
 #define BTN_SET_GPIO_Port GPIOB
-#define BTN_ADJ_Pin GPIO_PIN_1
-#define BTN_ADJ_GPIO_Port GPIOB
+#define BTN_ADJ_P_Pin GPIO_PIN_1
+#define BTN_ADJ_P_GPIO_Port GPIOB
+#define BTN_ADJ_M_Pin GPIO_PIN_3
+#define BTN_ADJ_M_GPIO_Port GPIOB
 #define LED_DIG_1_Pin GPIO_PIN_10
 #define LED_DIG_1_GPIO_Port GPIOB
 #define LED_DIG_2_Pin GPIO_PIN_11

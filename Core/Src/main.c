@@ -32,6 +32,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define GET_BTN_SET HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin);
+#define GET_BTN_ADJ_P HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_P_Pin);
+#define GET_BTN_ADJ_M HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_M_Pin);
 
 /* USER CODE END PD */
 
@@ -57,10 +60,16 @@ static void MX_RTC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+volatile SystemMode current_mode;
 uint32_t counter = 0;
 RTC_TimeTypeDef current_time;
-SystemState sys_state = { .digits = { 0 }, .dps = { 0 }, .btn_set = 0,
-		.btn_adj = 0 };
+RTC_TimeTypeDef user_time;
+uint8_t user_time_dirty = 0;
+SystemState sys_state = { .digits = { 0 }, .dps = { 0 } };
+
+Button btn_set = { BTN_SET_Pin, BTN_GPIO_Port, 0, 0, 0 };
+Button btn_adj_p = { BTN_ADJ_P_Pin, BTN_GPIO_Port, 0, 0, 0 };
+Button btn_adj_m = { BTN_ADJ_M_Pin, BTN_GPIO_Port, 0, 0, 0 };
 
 static const uint8_t segmentNumber[10] = { 0x3f, // 0
 		0x06, // 1
@@ -182,7 +191,6 @@ void displayNumber(uint32_t number) {
 }
 
 void update_time(RTC_TimeTypeDef *time, SystemState *state) {
-
 	state->digits[0] = (time->Hours & 0xF0) >> 4;
 	state->digits[1] = time->Hours & 0x0F;
 	state->digits[2] = (time->Minutes & 0xF0) >> 4;
@@ -192,17 +200,34 @@ void update_time(RTC_TimeTypeDef *time, SystemState *state) {
 
 }
 
-void check_buttons(SystemState *state) {
-	state->btn_set = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin);
-	state->btn_adj = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_Pin);
+void check_button(Button *button) {
+	if (HAL_GPIO_ReadPin(button->port, button->pin) == GPIO_PIN_RESET) {
+		if (button->counter < DEBOUNCE_THRESHOLD) {
+			button->counter++;
+		}
+		if (button->counter >= DEBOUNCE_THRESHOLD && !button->processed) {
+			button->pressed = 1;
+			button->processed = 1;  // Mark the button press as processed
+		}
+	} else {
+		button->counter = DEBOUNCE_RESET;
+		button->processed = 0;  // Clear the processed flag
+		button->pressed = 0;    // Clear the pressed flag
+	}
+}
 
-	// TEMP
-	state->dps[0] =
-			HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin) == GPIO_PIN_SET ?
-					0 : 1;
-	state->dps[1] =
-			HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_Pin) == GPIO_PIN_SET ?
-					0 : 1;
+void check_buttons() {
+	check_button(&btn_set);
+	check_button(&btn_adj_p);
+	check_button(&btn_adj_m);
+}
+
+void update_display(SystemState *state) {
+	for (uint8_t d = 0; d < 6; d++) {
+		display_digit_dp(d, state->digits[d], state->dps[d]);
+		HAL_Delay(1);
+		clear_display();
+	}
 }
 
 /* USER CODE END 0 */
@@ -213,6 +238,7 @@ void check_buttons(SystemState *state) {
  */
 int main(void) {
 	/* USER CODE BEGIN 1 */
+	current_mode = NORMAL;
 
 	/* USER CODE END 1 */
 
@@ -252,11 +278,14 @@ int main(void) {
 					| LED_DIG_5_Pin | LED_DIG_6_Pin, GPIO_PIN_SET);
 
 	sys_state.dps[0] = 0;
-	sys_state.dps[1] = 1;
+	sys_state.dps[1] = 0;
 	sys_state.dps[2] = 0;
-	sys_state.dps[3] = 1;
+	sys_state.dps[3] = 0;
 	sys_state.dps[4] = 0;
-	sys_state.dps[5] = 1;
+	sys_state.dps[5] = 0;
+
+	HAL_RTC_GetTime(&hrtc, &current_time, RTC_FORMAT_BCD);
+	HAL_RTC_GetTime(&hrtc, &user_time, RTC_FORMAT_BCD);
 
 	/* USER CODE END 2 */
 
@@ -267,20 +296,104 @@ int main(void) {
 		// 1. Check for button presses
 		check_buttons(&sys_state);
 
-		// 2. Update the time
-		HAL_RTC_GetTime(&hrtc, &current_time, RTC_FORMAT_BCD);
-		update_time(&current_time, &sys_state);
+		// 2. Update System State & Mode
+		switch (current_mode) {
+		case NORMAL:
+			if (btn_set.pressed) {
+				current_mode = SET_HOURS;
+			} else {
+				// Update time from RTC
+				HAL_RTC_GetTime(&hrtc, &current_time, RTC_FORMAT_BCD);
+				update_time(&current_time, &sys_state);
+				update_display(&sys_state);
+			}
 
-		// 3. Redraw the display
-		for (uint8_t d = 0; d < 6; d++) {
-			display_digit_dp(d, sys_state.digits[d], sys_state.dps[d]);
-			HAL_Delay(1);
-			clear_display();
+			break;
+
+		case SET_HOURS:
+			if (btn_adj_p.pressed) {
+				user_time.Hours = (user_time.Hours + 1) % 24;
+				user_time_dirty = 1;
+			}
+
+			if (btn_adj_m.pressed) {
+				user_time.Hours = (user_time.Hours - 1 + 24) % 24; // Not sure if this is right
+				user_time_dirty = 1;
+			}
+
+			if (btn_set.pressed) {
+				current_mode = SET_MINUTES;
+			} else {
+				// Draw the display, show only hours
+				update_time(&user_time, &sys_state);
+				sys_state.digits[2] = 10;
+				sys_state.digits[3] = 10;
+				sys_state.digits[4] = 10;
+				sys_state.digits[5] = 10;
+				update_display(&sys_state);
+			}
+
+			break;
+
+		case SET_MINUTES:
+			if (btn_adj_p.pressed) {
+				user_time.Minutes = (user_time.Minutes + 1) % 60;
+				user_time_dirty = 1;
+			}
+
+			if (btn_adj_m.pressed) {
+				user_time.Minutes = (user_time.Minutes - 1 + 60) % 60;
+				user_time_dirty = 1;
+			}
+
+			if (btn_set.pressed) {
+				current_mode = SET_SECONDS;
+			} else {
+				// Draw the display, show only minutes
+				update_time(&user_time, &sys_state);
+				sys_state.digits[0] = 10;
+				sys_state.digits[1] = 10;
+				sys_state.digits[4] = 10;
+				sys_state.digits[5] = 10;
+				update_display(&sys_state);
+			}
+
+			break;
+
+		case SET_SECONDS:
+			if (btn_adj_p.pressed) {
+				user_time.Seconds = (user_time.Seconds + 1) % 60;
+				user_time_dirty = 1;
+			}
+
+			if (btn_adj_m.pressed) {
+				user_time.Seconds = (user_time.Seconds - 1 + 60) % 60;
+				user_time_dirty = 1;
+			}
+
+			if (btn_set.pressed) {
+				if (user_time_dirty) {
+					update_time(&user_time, &sys_state);
+					current_time.Hours = user_time.Hours;
+					current_time.Minutes = user_time.Minutes;
+					current_time.Seconds = user_time.Seconds;
+					HAL_RTC_SetTime(&hrtc, &current_time, RTC_FORMAT_BCD);
+					user_time_dirty = 0;
+				}
+				current_mode = NORMAL;
+			} else {
+				// Draw the display, show only seconds
+				update_time(&user_time, &sys_state);
+				sys_state.digits[0] = 10;
+				sys_state.digits[1] = 10;
+				sys_state.digits[2] = 10;
+				sys_state.digits[3] = 10;
+				update_display(&sys_state);
+			}
+
+			break;
+
 		}
-		//displayNumber(counter++);
-		//if (counter >= 999999) {
-		//    counter = 0;
-		//}
 
 		/* USER CODE END WHILE */
 
@@ -454,7 +567,7 @@ static void MX_GPIO_Init(void) {
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 	/*Configure GPIO pins : BTN_SET_Pin BTN_ADJ_Pin */
-	GPIO_InitStruct.Pin = BTN_SET_Pin | BTN_ADJ_Pin;
+	GPIO_InitStruct.Pin = BTN_SET_Pin | BTN_ADJ_P_Pin | BTN_ADJ_M_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
