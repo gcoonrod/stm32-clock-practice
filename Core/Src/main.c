@@ -508,21 +508,21 @@ static void MX_RTC_Init(void) {
 
 	/** Initialize RTC and set the Time and Date
 	 */
-//	sTime.Hours = 0x0;
-//	sTime.Minutes = 0x0;
-//	sTime.Seconds = 0x0;
-//
-//	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
-//		Error_Handler();
-//	}
-//	DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
-//	DateToUpdate.Month = RTC_MONTH_JANUARY;
-//	DateToUpdate.Date = 0x1;
-//	DateToUpdate.Year = 0x0;
-//
-//	if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK) {
-//		Error_Handler();
-//	}
+	sTime.Hours = 0x0;
+	sTime.Minutes = 0x0;
+	sTime.Seconds = 0x0;
+
+	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
+		Error_Handler();
+	}
+	DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+	DateToUpdate.Month = RTC_MONTH_JANUARY;
+	DateToUpdate.Date = 0x1;
+	DateToUpdate.Year = 0x0;
+
+	if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK) {
+		Error_Handler();
+	}
 	/* USER CODE BEGIN RTC_Init 2 */
 
 	/* USER CODE END RTC_Init 2 */
@@ -566,7 +566,7 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-	/*Configure GPIO pins : BTN_SET_Pin BTN_ADJ_Pin */
+	/*Configure GPIO pins : BTN_SET_Pin BTN_ADJ_P_Pin BTN_ADJ_M_Pin */
 	GPIO_InitStruct.Pin = BTN_SET_Pin | BTN_ADJ_P_Pin | BTN_ADJ_M_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
