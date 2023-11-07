@@ -71,6 +71,9 @@ Button btn_set = { BTN_SET_Pin, BTN_GPIO_Port, 0, 0, 0 };
 Button btn_adj_p = { BTN_ADJ_P_Pin, BTN_GPIO_Port, 0, 0, 0 };
 Button btn_adj_m = { BTN_ADJ_M_Pin, BTN_GPIO_Port, 0, 0, 0 };
 
+RTC_TimeTypeDef sTime = { 0 };
+RTC_DateTypeDef DateToUpdate = { 0 };
+
 static const uint8_t segmentNumber[10] = { 0x3f, // 0
 		0x06, // 1
 		0x5b, // 2
@@ -287,6 +290,8 @@ int main(void) {
 	HAL_RTC_GetTime(&hrtc, &current_time, RTC_FORMAT_BCD);
 	HAL_RTC_GetTime(&hrtc, &user_time, RTC_FORMAT_BCD);
 
+	HAL_RTCEx_SetSecond_IT(&hrtc);
+
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
@@ -459,9 +464,8 @@ static void MX_RTC_Init(void) {
 
 	/* USER CODE END RTC_Init 0 */
 
-	RTC_TimeTypeDef sTime = { 0 };
-	RTC_DateTypeDef DateToUpdate = { 0 };
-
+	//RTC_TimeTypeDef sTime = { 0 };
+	//RTC_DateTypeDef DateToUpdate = { 0 };
 	/* USER CODE BEGIN RTC_Init 1 */
 
 	/* USER CODE END RTC_Init 1 */
@@ -508,21 +512,21 @@ static void MX_RTC_Init(void) {
 
 	/** Initialize RTC and set the Time and Date
 	 */
-	sTime.Hours = 0x0;
-	sTime.Minutes = 0x0;
-	sTime.Seconds = 0x0;
-
-	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
-		Error_Handler();
-	}
-	DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
-	DateToUpdate.Month = RTC_MONTH_JANUARY;
-	DateToUpdate.Date = 0x1;
-	DateToUpdate.Year = 0x0;
-
-	if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK) {
-		Error_Handler();
-	}
+//	sTime.Hours = 0x0;
+//	sTime.Minutes = 0x0;
+//	sTime.Seconds = 0x0;
+//
+//	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
+//		Error_Handler();
+//	}
+//	DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+//	DateToUpdate.Month = RTC_MONTH_JANUARY;
+//	DateToUpdate.Date = 0x1;
+//	DateToUpdate.Year = 0x0;
+//
+//	if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK) {
+//		Error_Handler();
+//	}
 	/* USER CODE BEGIN RTC_Init 2 */
 
 	/* USER CODE END RTC_Init 2 */
@@ -587,6 +591,11 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_RTCEx_RTCEventCallback(RTC_HandleTypeDef *hrtc) {
+	HAL_RTC_GetTime(hrtc, &sTime, RTC_FORMAT_BCD);
+	HAL_RTC_GetDate(hrtc, &DateToUpdate, RTC_FORMAT_BCD);
+}
 
 /* USER CODE END 4 */
 
