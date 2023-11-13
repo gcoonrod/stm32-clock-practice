@@ -67,12 +67,14 @@ RTC_TimeTypeDef user_time;
 uint8_t user_time_dirty = 0;
 SystemState sys_state = { .digits = { 0 }, .dps = { 0 } };
 
-Button btn_set = { BTN_SET_Pin, BTN_GPIO_Port, 0, 0, 0 };
-Button btn_adj_p = { BTN_ADJ_P_Pin, BTN_GPIO_Port, 0, 0, 0 };
-Button btn_adj_m = { BTN_ADJ_M_Pin, BTN_GPIO_Port, 0, 0, 0 };
+Button btn_set = { BTN_SET_Pin, BTN_GPIO_Port, 0, 0, 0, 500 };
+Button btn_adj_p = { BTN_ADJ_P_Pin, BTN_GPIO_Port, 0, 0, 0, 500 };
+Button btn_adj_m = { BTN_ADJ_M_Pin, BTN_GPIO_Port, 0, 0, 0, 500 };
 
 RTC_TimeTypeDef sTime = { 0 };
 RTC_DateTypeDef DateToUpdate = { 0 };
+
+LEDFlasher dp_flasher = { .dp_idx = 0, .flash = 0, .timer = 0 };
 
 static const uint8_t segmentNumber[10] = { 0x3f, // 0
 		0x06, // 1
@@ -204,13 +206,20 @@ void update_time(RTC_TimeTypeDef *time, SystemState *state) {
 }
 
 void check_button(Button *button) {
-	if (HAL_GPIO_ReadPin(button->port, button->pin) == GPIO_PIN_RESET) {
+	uint32_t currentTime = HAL_GetTick();
+
+	if (currentTime - button->lassPressTime < button->cooldownPeriod){
+		return;
+	}
+
+	if (HAL_GPIO_ReadPin(button->port, button->pin) == GPIO_PIN_SET) {
 		if (button->counter < DEBOUNCE_THRESHOLD) {
 			button->counter++;
 		}
 		if (button->counter >= DEBOUNCE_THRESHOLD && !button->processed) {
 			button->pressed = 1;
 			button->processed = 1;  // Mark the button press as processed
+			button->lassPressTime = currentTime; // Update the last press time
 		}
 	} else {
 		button->counter = DEBOUNCE_RESET;
@@ -226,6 +235,15 @@ void check_buttons() {
 }
 
 void update_display(SystemState *state) {
+	if (dp_flasher.flash) {
+		state->dps[dp_flasher.dp_idx] = 1;
+
+		if (HAL_GetTick() - dp_flasher.timer >= 100) {
+			state->dps[dp_flasher.dp_idx] = 0;
+			dp_flasher.flash = 0;
+		}
+	}
+
 	for (uint8_t d = 0; d < 6; d++) {
 		display_digit_dp(d, state->digits[d], state->dps[d]);
 		HAL_Delay(1);
@@ -593,6 +611,10 @@ static void MX_GPIO_Init(void) {
 /* USER CODE BEGIN 4 */
 
 void HAL_RTCEx_RTCEventCallback(RTC_HandleTypeDef *hrtc) {
+	// Flash the first DP led each time this callback fires
+	dp_flasher.flash = 1;
+	dp_flasher.timer = HAL_GetTick();
+
 	HAL_RTC_GetTime(hrtc, &sTime, RTC_FORMAT_BCD);
 	HAL_RTC_GetDate(hrtc, &DateToUpdate, RTC_FORMAT_BCD);
 }

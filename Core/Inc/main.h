@@ -51,14 +51,22 @@ typedef struct {
 	uint8_t pressed;
 	uint8_t counter;
 	uint8_t processed;
+	uint32_t lassPressTime;
+	uint32_t cooldownPeriod;
 } Button;
+
+typedef struct {
+	uint8_t dp_idx;
+	uint8_t flash;
+	uint32_t timer;
+} LEDFlasher;
 
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
-#define DEBOUNCE_THRESHOLD 10
+#define DEBOUNCE_THRESHOLD 15
 #define DEBOUNCE_RESET 0
 
 /* USER CODE END EC */
