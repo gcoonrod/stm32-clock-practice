@@ -22,6 +22,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "utils.h"
+#include "usbd_cdc_if.h"
+#include "stdio.h"
+#include "string.h"
 
 /* USER CODE END Includes */
 
@@ -32,9 +36,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define GET_BTN_SET HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_SET_Pin);
-#define GET_BTN_ADJ_P HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_P_Pin);
-#define GET_BTN_ADJ_M HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_ADJ_M_Pin);
 
 /* USER CODE END PD */
 
@@ -67,14 +68,15 @@ RTC_TimeTypeDef user_time;
 uint8_t user_time_dirty = 0;
 SystemState sys_state = { .digits = { 0 }, .dps = { 0 } };
 
-Button btn_set = { BTN_SET_Pin, BTN_GPIO_Port, 0, 0, 0, 500 };
-Button btn_adj_p = { BTN_ADJ_P_Pin, BTN_GPIO_Port, 0, 0, 0, 500 };
-Button btn_adj_m = { BTN_ADJ_M_Pin, BTN_GPIO_Port, 0, 0, 0, 500 };
+Button btn_set = { BTN_SET_Pin, BTN_GPIO_Port, 0, 0, 0, 10000 };
+Button btn_adj_p = { BTN_ADJ_P_Pin, BTN_GPIO_Port, 0, 0, 0, 10000 };
+Button btn_adj_m = { BTN_ADJ_M_Pin, BTN_GPIO_Port, 0, 0, 0, 10000 };
 
-RTC_TimeTypeDef sTime = { 0 };
 RTC_DateTypeDef DateToUpdate = { 0 };
 
 LEDFlasher dp_flasher = { .dp_idx = 0, .flash = 0, .timer = 0 };
+
+unsigned char strTick[4] = "Tick";
 
 static const uint8_t segmentNumber[10] = { 0x3f, // 0
 		0x06, // 1
@@ -87,41 +89,6 @@ static const uint8_t segmentNumber[10] = { 0x3f, // 0
 		0x7f, // 8
 		0x67  // 9
 		};
-
-void display_digit(uint8_t digit, uint8_t num) {
-	// Turn off all segments
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port,
-			LED_SEG_A_Pin | LED_SEG_B_Pin | LED_SEG_C_Pin | LED_SEG_D_Pin
-					| LED_SEG_E_Pin | LED_SEG_F_Pin | LED_SEG_G_Pin
-					| LED_SEG_DP_Pin, GPIO_PIN_RESET);
-
-	// Turn off all digits
-	HAL_GPIO_WritePin(LED_DIG_GPIO_Port,
-			LED_DIG_1_Pin | LED_DIG_2_Pin | LED_DIG_3_Pin | LED_DIG_4_Pin
-					| LED_DIG_5_Pin | LED_DIG_6_Pin, GPIO_PIN_SET);
-
-	// Now, display the number
-	//HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_A_Pin | LED_SEG_B_Pin | LED_SEG_C_Pin | LED_SEG_D_Pin | LED_SEG_E_Pin | LED_SEG_F_Pin | LED_SEG_G_Pin | LED_SEG_DP_Pin, segmentNumber[num]);
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_A_Pin,
-			((segmentNumber[num] >> 0) & 0x01));
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_B_Pin,
-			((segmentNumber[num] >> 1) & 0x01));
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_C_Pin,
-			((segmentNumber[num] >> 2) & 0x01));
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_D_Pin,
-			((segmentNumber[num] >> 3) & 0x01));
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_E_Pin,
-			((segmentNumber[num] >> 4) & 0x01));
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_F_Pin,
-			((segmentNumber[num] >> 5) & 0x01));
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_G_Pin,
-			((segmentNumber[num] >> 6) & 0x01));
-	HAL_GPIO_WritePin(LED_SEG_GPIO_Port, LED_SEG_DP_Pin,
-			((segmentNumber[num] >> 7) & 0x01));
-
-	// Finally, turn on the desired digit
-	HAL_GPIO_WritePin(LED_DIG_GPIO_Port, 1 << (digit + 10), GPIO_PIN_RESET);
-}
 
 void display_digit_dp(uint8_t digit, uint8_t num, uint8_t dp) {
 	// Turn off all segments
@@ -173,27 +140,6 @@ void clear_display() {
 					| LED_DIG_5_Pin | LED_DIG_6_Pin, GPIO_PIN_SET);
 }
 
-void displayNumber(uint32_t number) {
-	if (number > 999999) {
-		Error_Handler();
-	}
-
-	uint8_t digits[6] = { 0 };
-	uint8_t i = 0;
-
-	while (number > 0) {
-		digits[i] = number % 10;
-		number /= 10;
-		i++;
-	}
-
-	for (uint8_t d = 0; d < 6; d++) {
-		display_digit(d, digits[5 - d]);
-		HAL_Delay(1);
-		clear_display();
-	}
-
-}
 
 void update_time(RTC_TimeTypeDef *time, SystemState *state) {
 	state->digits[0] = (time->Hours & 0xF0) >> 4;
@@ -207,19 +153,26 @@ void update_time(RTC_TimeTypeDef *time, SystemState *state) {
 
 void check_button(Button *button) {
 	uint32_t currentTime = HAL_GetTick();
-
-	if (currentTime - button->lassPressTime < button->cooldownPeriod){
+	if (currentTime - button->lassPressTime < button->cooldownPeriod) {
 		return;
 	}
 
 	if (HAL_GPIO_ReadPin(button->port, button->pin) == GPIO_PIN_SET) {
 		if (button->counter < DEBOUNCE_THRESHOLD) {
 			button->counter++;
+
 		}
-		if (button->counter >= DEBOUNCE_THRESHOLD && !button->processed) {
-			button->pressed = 1;
-			button->processed = 1;  // Mark the button press as processed
-			button->lassPressTime = currentTime; // Update the last press time
+		if (button->counter >= DEBOUNCE_THRESHOLD) {
+			if (!button->processed) {
+				button->pressed = 1;
+				button->processed = 1;  // Mark the button press as processed
+				button->lassPressTime = currentTime; // Update the last press time
+
+			} else {
+				// Button held past processed
+				button->pressed = 0;
+			}
+
 		}
 	} else {
 		button->counter = DEBOUNCE_RESET;
@@ -249,6 +202,22 @@ void update_display(SystemState *state) {
 		HAL_Delay(1);
 		clear_display();
 	}
+}
+
+void serialDebug(const char *message) {
+	char buffer[256];
+
+	uint8_t day = bcd_to_bin(DateToUpdate.Date);
+	uint8_t month = bcd_to_bin(DateToUpdate.Month);
+	uint16_t year = bcd_to_bin(DateToUpdate.Year) + 2000;
+	uint8_t hours = bcd_to_bin(current_time.Hours);
+	uint8_t minutes = bcd_to_bin(current_time.Minutes);
+	uint8_t seconds = bcd_to_bin(current_time.Seconds);
+
+	snprintf(buffer, sizeof(buffer), "%02d-%02d-%04d %02d:%02d:%02d > %s\r\n",
+			day, month, year, hours, minutes, seconds, message);
+
+	CDC_Transmit_FS((uint8_t*) buffer, strlen(buffer));
 }
 
 /* USER CODE END 0 */
@@ -310,6 +279,13 @@ int main(void) {
 
 	HAL_RTCEx_SetSecond_IT(&hrtc);
 
+	// Read buffer
+	uint8_t rxData[8];
+	memset(rxData, 0, 8);
+
+	// Send UART start
+	serialDebug("Init Complete. Starting...");
+
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
@@ -317,13 +293,14 @@ int main(void) {
 	while (1) {
 
 		// 1. Check for button presses
-		check_buttons(&sys_state);
+		check_buttons();
 
 		// 2. Update System State & Mode
 		switch (current_mode) {
 		case NORMAL:
 			if (btn_set.pressed) {
 				current_mode = SET_HOURS;
+				serialDebug("set hours mode");
 			} else {
 				// Update time from RTC
 				HAL_RTC_GetTime(&hrtc, &current_time, RTC_FORMAT_BCD);
@@ -337,15 +314,18 @@ int main(void) {
 			if (btn_adj_p.pressed) {
 				user_time.Hours = (user_time.Hours + 1) % 24;
 				user_time_dirty = 1;
+				serialDebug("+ hours");
 			}
 
 			if (btn_adj_m.pressed) {
 				user_time.Hours = (user_time.Hours - 1 + 24) % 24; // Not sure if this is right
 				user_time_dirty = 1;
+				serialDebug("- hours");
 			}
 
 			if (btn_set.pressed) {
 				current_mode = SET_MINUTES;
+				serialDebug("set minutes mode");
 			} else {
 				// Draw the display, show only hours
 				update_time(&user_time, &sys_state);
@@ -362,15 +342,18 @@ int main(void) {
 			if (btn_adj_p.pressed) {
 				user_time.Minutes = (user_time.Minutes + 1) % 60;
 				user_time_dirty = 1;
+				serialDebug("+ min");
 			}
 
 			if (btn_adj_m.pressed) {
 				user_time.Minutes = (user_time.Minutes - 1 + 60) % 60;
 				user_time_dirty = 1;
+				serialDebug("- min");
 			}
 
 			if (btn_set.pressed) {
 				current_mode = SET_SECONDS;
+				serialDebug("set seconds mode");
 			} else {
 				// Draw the display, show only minutes
 				update_time(&user_time, &sys_state);
@@ -387,15 +370,18 @@ int main(void) {
 			if (btn_adj_p.pressed) {
 				user_time.Seconds = (user_time.Seconds + 1) % 60;
 				user_time_dirty = 1;
+				serialDebug("+ sec");
 			}
 
 			if (btn_adj_m.pressed) {
 				user_time.Seconds = (user_time.Seconds - 1 + 60) % 60;
 				user_time_dirty = 1;
+				serialDebug("- sec");
 			}
 
 			if (btn_set.pressed) {
 				if (user_time_dirty) {
+					serialDebug("time dirty, updating");
 					update_time(&user_time, &sys_state);
 					current_time.Hours = user_time.Hours;
 					current_time.Minutes = user_time.Minutes;
@@ -404,6 +390,7 @@ int main(void) {
 					user_time_dirty = 0;
 				}
 				current_mode = NORMAL;
+				serialDebug("set normal mode");
 			} else {
 				// Draw the display, show only seconds
 				update_time(&user_time, &sys_state);
@@ -416,6 +403,18 @@ int main(void) {
 
 			break;
 
+		}
+
+		// UART
+		// Echo data
+		uint16_t bytesAvailable = CDC_GetRxBufferBytesAvailable_FS();
+		if (bytesAvailable > 0) {
+			uint16_t bytesToRead = bytesAvailable >= 8 ? 8 : bytesAvailable;
+			if (CDC_ReadRxBuffer_FS(rxData, bytesToRead)
+					== USB_CDC_RX_BUFFER_OK) {
+				while (CDC_Transmit_FS(rxData, bytesToRead) == USBD_BUSY)
+					;
+			}
 		}
 
 		/* USER CODE END WHILE */
@@ -482,8 +481,9 @@ static void MX_RTC_Init(void) {
 
 	/* USER CODE END RTC_Init 0 */
 
-	//RTC_TimeTypeDef sTime = { 0 };
-	//RTC_DateTypeDef DateToUpdate = { 0 };
+	RTC_TimeTypeDef sTime = { 0 };
+	RTC_DateTypeDef DateToUpdate = { 0 };
+
 	/* USER CODE BEGIN RTC_Init 1 */
 
 	/* USER CODE END RTC_Init 1 */
@@ -615,7 +615,7 @@ void HAL_RTCEx_RTCEventCallback(RTC_HandleTypeDef *hrtc) {
 	dp_flasher.flash = 1;
 	dp_flasher.timer = HAL_GetTick();
 
-	HAL_RTC_GetTime(hrtc, &sTime, RTC_FORMAT_BCD);
+	HAL_RTC_GetTime(hrtc, &current_time, RTC_FORMAT_BCD);
 	HAL_RTC_GetDate(hrtc, &DateToUpdate, RTC_FORMAT_BCD);
 }
 

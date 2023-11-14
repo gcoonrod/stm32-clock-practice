@@ -66,7 +66,7 @@ typedef struct {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
-#define DEBOUNCE_THRESHOLD 15
+#define DEBOUNCE_THRESHOLD 25
 #define DEBOUNCE_RESET 0
 
 /* USER CODE END EC */
@@ -81,6 +81,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void check_buttons();
+void serialDebug(const char *message);
 
 /* USER CODE END EFP */
 
